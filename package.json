@@ -1,0 +1,26 @@
+{
+  "name": "omocorobot",
+  "version": "1.0.0",
+  "description": "https://omocoro.jp/kiji/108660/",
+  "main": "omocorobot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/taniho0707/omocorobot.git"
+  },
+  "author": "",
+  "license": "GPL-2.0",
+  "bugs": {
+    "url": "https://github.com/taniho0707/omocorobot/issues"
+  },
+  "homepage": "https://github.com/taniho0707/omocorobot#readme",
+  "dependencies": {
+    "config": "^3.1.0",
+    "discord.js": "^11.4.2",
+    "log4js": "^4.2.0",
+    "sqlite3": "^4.0.8",
+    "sync-request": "^6.1.0"
+  }
+}

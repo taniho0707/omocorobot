@@ -1,3 +1,10 @@
+# TOKEN
+config/secret.json
+
+old.js
+
+package-lock.json
+
 # Logs
 logs
 *.log
