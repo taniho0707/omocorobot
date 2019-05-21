@@ -4,6 +4,8 @@ config/secret.json
 old.js
 
 package-lock.json
+word.sqlite
+title.sqlite
 
 # Logs
 logs
