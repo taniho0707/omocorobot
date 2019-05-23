@@ -53,15 +53,6 @@ function openOrCreateDatabase () {
 
     dbWord.serialize(() => {
         dbWord.run('CREATE TABLE IF NOT EXISTS word (name TEXT PRIMARY KEY, rawname TEXT, enabled BOOLEAN)');
-
-        // // Prepared Statement でデータを挿入する
-        // const stmt = dbWord.prepare('INSERT INTO user VALUES (?, ?)');
-        // stmt.run(['Foo', 25]);
-        // stmt.run(['Bar', 39]);
-        // stmt.run(['Baz', 31]);
-
-        // // prepare() で取得した Prepared Statement オブジェクトをクローズする。これをコールしないとエラーになる
-        // stmt.finalize();
     });
     dbTitle.serialize(() => {
         dbTitle.run('CREATE TABLE IF NOT EXISTS title (messageid INT PRIMARY KEY, title TEXT, author TEXT, word1 TEXT, word2 TEXT, word3 TEXT, word4 TEXT, reaction INT)');
@@ -92,17 +83,91 @@ function splitWords (str) {
 
 // 単語を正規化する
 function normalizeWord (str) {
+    return str.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
+        return String.fromCharCode(s.charCodeAt(0) - 65248);
+    }).toUpperCase();
+}
 
+
+var existWord = function (str) {
+    return new Promise(resolve => {
+        var existItem;
+        var exist = true;
+        dbWord.get("SELECT * FROM word WHERE name = ?", [normalizeWord(str)], (err,row) => {
+            existItem = row;
+            if (existItem === undefined || existItem.enabled === 0) {
+                exist = false;
+            }
+            var ret = {
+                "exist": exist,
+                "str": str
+            };
+            resolve(ret);
+        });
+    });
 }
 
 // 単語を1個追加/有効化する
-function addWord (str) {
-
+var addWord = function (item) {
+    return new Promise(resolve => {
+        var exist = item.exist;
+        if (exist === false) {
+            dbWord.run("INSERT OR REPLACE INTO word VALUES (?,?,?)", [normalizeWord(item.str), item.str, true], () => {
+                resolve(item);
+            });
+        } else {
+            resolve(item);
+        }
+    });
 }
 
 // 複数の単語をデータベースに追加/有効化します
-function addWords (str) {
-
+async function addWords (str) {
+    var doquery = async function (key) {
+        return new Promise(resolve => {
+            existWord(key).then(addWord).then(item => {
+                console.log(item);
+                resolve(item);
+            });
+        });
+    }
+    
+    var keys = str.split(/[,， 　]/);
+    await Promise.all(
+        keys.map((item) => {
+            return doquery(item);
+        })
+    ).then((res) => {
+        console.log(res);
+        var message = "";
+        var existCount = 0;
+        var existArray = [];
+        var noexistCount = 0;
+        var noexistArray = [];
+        for (var item of res) {
+            if (item.exist) {
+                ++ existCount;
+                existArray.push(item.str);
+            } else {
+                ++ noexistCount;
+                noexistArray.push(item.str);
+            }
+        }
+        if (noexistCount !== 0) {
+            message += "新しく ";
+            for (var i of noexistArray) {
+                message += "\"" + i + "\" ";
+            }
+            message += "を登録しました\n";
+        }
+        if (existCount !== 0) {
+            for (var i of existArray) {
+                message += "\"" + i + "\" ";
+            }
+            message += "は既に登録されています\n";
+        }
+        console.log(message);
+    });
 }
 
 
@@ -145,9 +210,11 @@ client.on('message', message => {
     }
 });
 
+
 // openOrCreateDatabase();
+// addWords("test3,hoge fuga NEW!");
 // closeDatabase();
 
-client.login(token);
+// client.login(token);
 
 
