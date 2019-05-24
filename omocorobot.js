@@ -86,7 +86,7 @@ function getRandomWord (callback) {
 }
 
 // 有効化された単語数を返す
-function getWordLength (callback) {
+function getStatus (callback) {
     dbWord.get("SELECT COUNT(name) FROM word WHERE enabled = 1", [], (err, row) => {
         if (err) {
             errorLogger.error(err);
@@ -278,7 +278,7 @@ client.on('message', message => {
             message.channel.send(msg);
         });
     } else if (message.content === "/status") {
-        getWordLength((msg) => {
+        getStatus((msg) => {
             message.channel.send(msg);
         });
     } else if (message.content === "/award") {
