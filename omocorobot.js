@@ -290,7 +290,7 @@ client.on('message', message => {
         } else {
             addWords(words, (msg) => {
                 message.channel.send(msg);
-                defaultLogger(msg);
+                // defaultLogger(msg);
             });
         }
     } else if (message.content.indexOf('/remove') === 0) {
@@ -300,7 +300,7 @@ client.on('message', message => {
         } else {
             removeWords(words, (msg) => {
                 message.channel.send(msg);
-                defaultLogger(msg);
+                // defaultLogger(msg);
             });
         }
     }
