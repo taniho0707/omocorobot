@@ -6,6 +6,7 @@ old.js
 package-lock.json
 word.sqlite
 title.sqlite
+backup.log
 
 # Logs
 logs

@@ -36,8 +36,8 @@ var dbTitle;
 // Load Configs and Token
 let token = '';
 let channelid = '';
+const secret = JSON.parse(fs.readFileSync(config.secretPath));
 if (fs.existsSync(config.secretPath)) {
-    const secret = JSON.parse(fs.readFileSync(config.secretPath));
     token = secret.token;
     channelid = secret.channelid;
 } else {
@@ -57,29 +57,61 @@ function openOrCreateDatabase () {
     dbTitle.serialize(() => {
         dbTitle.run('CREATE TABLE IF NOT EXISTS title (messageid INT PRIMARY KEY, title TEXT, author TEXT, word1 TEXT, word2 TEXT, word3 TEXT, word4 TEXT, reaction INT)');
     });
+
+    defaultLogger.info("Open databases");
 }
 
 function closeDatabase () {
     dbWord.close();
     dbTitle.close();
+    defaultLogger.info("Close databases");
 }
 
 
 // shuffleコマンドに対応する結果を返す
-function getRandomWord () {
-
+function getRandomWord (callback) {
+    dbWord.all("SELECT * FROM word ORDER BY RANDOM() LIMIT 4", [], (err, rows) => {
+        if (err) {
+            errorLogger.error(err);
+        } else {
+            let randomwords = "【ライトノベルBOX】";
+            for (var i of rows) {
+                randomwords += "\n";
+                randomwords += i.rawname;
+            }
+            defaultLogger.info(randomwords);
+            callback(randomwords);
+        }
+    });
 }
+
+// 有効化された単語数を返す
+function getWordLength (callback) {
+    dbWord.get("SELECT COUNT(name) FROM word WHERE enabled = 1", [], (err, row) => {
+        if (err) {
+            errorLogger.error(err);
+        } else {
+            let status = "【omocorobot status】";
+            status += "\n単語総数：";
+            status += row['COUNT(name)'];
+            status += "語";
+
+            var backupstatus = fs.readFileSync(secret.backuplog);
+            status += "\n最終バックアップ日時：";
+            status += backupstatus;
+
+            defaultLogger.info(status);
+            callback(status);
+        }
+    });
+}
+
 
 // 人気タイトルを返す
 function getAwardTitles () {
 
 }
 
-
-// 複数の単語を分離する
-function splitWords (str) {
-
-}
 
 // 単語を正規化する
 function normalizeWord (str) {
@@ -122,23 +154,22 @@ var addWord = function (item) {
 }
 
 // 複数の単語をデータベースに追加/有効化します
-async function addWords (str) {
+async function addWords (str, callback) {
     var doquery = async function (key) {
         return new Promise(resolve => {
             existWord(key).then(addWord).then(item => {
-                console.log(item);
                 resolve(item);
             });
         });
     }
     
-    var keys = str.split(/[,， 　]/);
+    var keys = str.replace(/^\s*/, '');
+    keys = keys.split(/[,， 　]/);
     await Promise.all(
         keys.map((item) => {
             return doquery(item);
         })
     ).then((res) => {
-        console.log(res);
         var message = "";
         var existCount = 0;
         var existArray = [];
@@ -166,19 +197,72 @@ async function addWords (str) {
             }
             message += "は既に登録されています\n";
         }
-        console.log(message);
+        defaultLogger(message);
+        callback(message);
     });
 }
 
 
 // 単語を1個削除/無効化する
-function removeWord (str) {
-
+var removeWord = function (item) {
+    return new Promise(resolve => {
+        var exist = item.exist;
+        if (exist === true) {
+            dbWord.run("UPDATE word SET enabled = 0 WHERE name = ?", [normalizeWord(item.str)], () => {
+                resolve(item);
+            });
+        } else {
+            resolve(item);
+        }
+    });
 }
 
 // 複数の単語をデータベースから削除/無効化します
-function removeWords (str) {
-
+async function removeWords (str, callback) {
+    var doquery = async function (key) {
+        return new Promise(resolve => {
+            existWord(key).then(removeWord).then(item => {
+                resolve(item);
+            });
+        });
+    }
+    
+    var keys = str.replace(/^\s*/, '');
+    keys = keys.split(/[,， 　]/);
+    await Promise.all(
+        keys.map((item) => {
+            return doquery(item);
+        })
+    ).then((res) => {
+        var message = "";
+        var existCount = 0;
+        var existArray = [];
+        var noexistCount = 0;
+        var noexistArray = [];
+        for (var item of res) {
+            if (item.exist) {
+                ++ existCount;
+                existArray.push(item.str);
+            } else {
+                ++ noexistCount;
+                noexistArray.push(item.str);
+            }
+        }
+        if (existCount !== 0) {
+            for (var i of existArray) {
+                message += "\"" + i + "\" ";
+            }
+            message += " を削除しました\n";
+        }
+        if (noexistCount !== 0) {
+            for (var i of noexistArray) {
+                message += "\"" + i + "\" ";
+            }
+            message += " は登録されていません\n";
+        }
+        defaultLogger(message);
+        callback(message);
+    });
 }
 
 
@@ -190,31 +274,53 @@ client.on('message', message => {
     if (message.content === "/help") {
         message.channel.send(helpmessage);
     } else if (message.content === "/shuffle") {
-        let randomwords = "【ライトノベルBOX】";
-        randomwords += getRandomWord();
-        message.channel.send(randomwords);
+        getRandomWord((msg) => {
+            message.channel.send(msg);
+        });
     } else if (message.content === "/status") {
-
+        getWordLength((msg) => {
+            message.channel.send(msg);
+        });
     } else if (message.content === "/award") {
-        let awardtitles = "【優秀タイトル】";
-        awardtitles += getAwardTitles();
-        message.channel.send(awardtitles);
+        // let awardtitles = "【優秀タイトル】";
+        // awardtitles += getAwardTitles();
+        // message.channel.send(awardtitles);
     } else if (message.content.indexOf('/add') === 0) {
-        let words = "";
-
-        message.channel.send(addWords(words));
+        let words = message.content.replace(/\/add/, '');
+        if (!(words)) {
+            message.channel.send("有効な文字列を入力してください\n  /add word");
+        } else {
+            addWords(words, (msg) => {
+                message.channel.send(msg);
+            });
+        }
     } else if (message.content.indexOf('/remove') === 0) {
-        let words = "";
-
-        message.channel.send(removeWords(words));
+        let words = message.content.replace(/\/remove/, '');
+        if (!(words)) {
+            message.channel.send("有効な文字列を入力してください\n  /remove word");
+        } else {
+            removeWords(words, (msg) => {
+                message.channel.send(msg);
+            });
+        }
     }
 });
 
 
-// openOrCreateDatabase();
-// addWords("test3,hoge fuga NEW!");
-// closeDatabase();
+// 終了前処理
+process.on('exit', function (code) {
+    closeDatabase();
+    defaultLogger.info('exit program');
+    defaultLogger.info('return code: ' + code);
+});
+process.on('SIGINT', function() {
+    process.exit();
+});
 
-// client.login(token);
+
+
+openOrCreateDatabase();
+
+client.login(token);
 
 
