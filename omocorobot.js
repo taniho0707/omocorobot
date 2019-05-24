@@ -197,7 +197,6 @@ async function addWords (str, callback) {
             }
             message += "は既に登録されています\n";
         }
-        defaultLogger(message);
         callback(message);
     });
 }
@@ -260,7 +259,6 @@ async function removeWords (str, callback) {
             }
             message += " は登録されていません\n";
         }
-        defaultLogger(message);
         callback(message);
     });
 }
@@ -292,6 +290,7 @@ client.on('message', message => {
         } else {
             addWords(words, (msg) => {
                 message.channel.send(msg);
+                defaultLogger(msg);
             });
         }
     } else if (message.content.indexOf('/remove') === 0) {
@@ -301,6 +300,7 @@ client.on('message', message => {
         } else {
             removeWords(words, (msg) => {
                 message.channel.send(msg);
+                defaultLogger(msg);
             });
         }
     }
