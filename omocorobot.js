@@ -394,8 +394,9 @@ function judgeTitleInOneTheme (str, words) {
         "result": false,
         "words": []
     };
+    var normalizedStr = normalizeWord(str);
     for (var i=0; i<4; ++i) {
-        if (str.indexOf(words[i]) !== -1) {
+        if (normalizedStr.indexOf(words[i]) !== -1) {
             ++ counter;
             returnObject.words.push(words[i]);
         }
@@ -446,10 +447,10 @@ function isShuffleResult (str) {
         for (var i = 0; i < 4; ++i) {
             messageLogStatus.themeWords2[i] = messageLogStatus.themeWords1[i];
         }
-        messageLogStatus.themeWords1[0] = words[1];
-        messageLogStatus.themeWords1[1] = words[2];
-        messageLogStatus.themeWords1[2] = words[3];
-        messageLogStatus.themeWords1[3] = words[4];
+        messageLogStatus.themeWords1[0] = normalizeWord(words[1]);
+        messageLogStatus.themeWords1[1] = normalizeWord(words[2]);
+        messageLogStatus.themeWords1[2] = normalizeWord(words[3]);
+        messageLogStatus.themeWords1[3] = normalizeWord(words[4]);
         return true;
     } else {
         return false;
@@ -484,7 +485,7 @@ client.on('ready', () => {
                     saveStatus();
                 } else {
                     if (judgeTitle(fetchingMessages[i])) {
-                        console.log("Add title " + fetchingMessages[i].content);
+                        defaultLogger.info("Add title " + fetchingMessages[i].content);
                         // fetchingMessages.react('❤');
                     }
                 }
