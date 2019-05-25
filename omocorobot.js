@@ -114,7 +114,7 @@ function closeDatabase () {
 
 // shuffleコマンドに対応する結果を返す
 function getRandomWord (callback) {
-    dbWord.all("SELECT * FROM word ORDER BY RANDOM() LIMIT 4 WHERE enabled = 1", [], (err, rows) => {
+    dbWord.all("SELECT * FROM word ORDER BY RANDOM() WHERE enabled = 1 LIMIT 4", [], (err, rows) => {
         if (err) {
             errorLogger.error(err);
         } else {
