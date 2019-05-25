@@ -202,13 +202,14 @@ async function addWords (str, callback) {
             }
         }
         if (noexistCount !== 0) {
-            message += "新しく ";
+            message += "🆗 新しく ";
             for (var i of noexistArray) {
                 message += "\"" + i + "\" ";
             }
             message += "を登録しました\n";
         }
         if (existCount !== 0) {
+            message += "⛔ ";
             for (var i of existArray) {
                 message += "\"" + i + "\" ";
             }
@@ -268,12 +269,14 @@ async function removeWords (str, callback) {
             }
         }
         if (existCount !== 0) {
+            message += "🆗 ";
             for (var i of existArray) {
                 message += "\"" + i + "\" ";
             }
             message += " を削除しました\n";
         }
         if (noexistCount !== 0) {
+            message += "⛔ ";
             for (var i of noexistArray) {
                 message += "\"" + i + "\" ";
             }
@@ -368,7 +371,7 @@ client.on('message', message => {
     } else if (message.content.indexOf('/add') === 0) {
         let words = message.content.replace(/\/add/, '');
         if (!(words)) {
-            message.channel.send("有効な文字列を入力してください\n  /add word");
+            message.channel.send("🙅 有効な文字列を入力してください\n /add word");
         } else {
             addWords(words, (msg) => {
                 message.channel.send(msg);
@@ -378,7 +381,7 @@ client.on('message', message => {
     } else if (message.content.indexOf('/remove') === 0) {
         let words = message.content.replace(/\/remove/, '');
         if (!(words)) {
-            message.channel.send("有効な文字列を入力してください\n  /remove word");
+            message.channel.send("🙅 有効な文字列を入力してください\n /remove word");
         } else {
             removeWords(words, (msg) => {
                 message.channel.send(msg);
@@ -388,7 +391,7 @@ client.on('message', message => {
     } else if (message.content.indexOf('/exist') === 0) {
         let words = message.content.replace(/\/exist/, '');
         if (!(words)) {
-            message.channel.send("有効な文字列を入力してください\n  \exist word");
+            message.channel.send("🙅 有効な文字列を入力してください\n \exist word");
         } else {
             existWords(words, (msg) => {
                 message.channel.send(msg);
