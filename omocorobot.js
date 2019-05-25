@@ -151,7 +151,7 @@ function getRandomTitle (filter, callback) {
             }
         });
     } else {
-        dbTitle.get("SELECT * FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter)], (err, row) => {
+        dbTitle.get("SELECT * FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row) => {
             if (err) {
                 errorLogger.error(err);
             } else {
