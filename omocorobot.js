@@ -125,24 +125,41 @@ var existWord = function (str) {
     return new Promise(resolve => {
         var existItem;
         var exist = true;
+        var enabled = false;
+        var ret;
         dbWord.get("SELECT * FROM word WHERE name = ?", [normalizeWord(str)], (err,row) => {
             existItem = row;
-            if (existItem === undefined || existItem.enabled === 0) {
+            
+            if (existItem === undefined) {
                 exist = false;
+                ret = {
+                    "exist": exist,
+                    "str": str,
+                    "enabled": false
+                };
+            } else {
+                if (existItem.enabled === 1) {
+                    enabled = true
+                }
+                ret = {
+                    "exist": exist,
+                    "str": str,
+                    "enabled": existItem.enabled
+                };
             }
-            var ret = {
-                "exist": exist,
-                "str": str
-            };
             resolve(ret);
         });
     });
 }
 
+
 // 単語を1個追加/有効化する
 var addWord = function (item) {
     return new Promise(resolve => {
         var exist = item.exist;
+        if (item.enabled === false) {
+            exist = false;
+        }
         if (exist === false) {
             dbWord.run("INSERT OR REPLACE INTO word VALUES (?,?,?)", [normalizeWord(item.str), item.str, true], () => {
                 resolve(item);
@@ -176,7 +193,7 @@ async function addWords (str, callback) {
         var noexistCount = 0;
         var noexistArray = [];
         for (var item of res) {
-            if (item.exist) {
+            if (item.exist && item.enabled) {
                 ++ existCount;
                 existArray.push(item.str);
             } else {
@@ -206,6 +223,9 @@ async function addWords (str, callback) {
 var removeWord = function (item) {
     return new Promise(resolve => {
         var exist = item.exist;
+        if (item.enabled === false) {
+            exist = false;
+        }
         if (exist === true) {
             dbWord.run("UPDATE word SET enabled = 0 WHERE name = ?", [normalizeWord(item.str)], () => {
                 resolve(item);
@@ -239,7 +259,7 @@ async function removeWords (str, callback) {
         var noexistCount = 0;
         var noexistArray = [];
         for (var item of res) {
-            if (item.exist) {
+            if (item.exist && item.enabled) {
                 ++ existCount;
                 existArray.push(item.str);
             } else {
@@ -258,6 +278,68 @@ async function removeWords (str, callback) {
                 message += "\"" + i + "\" ";
             }
             message += " は登録されていません\n";
+        }
+        callback(message);
+    });
+}
+
+
+// 複数の単語があるか確認する
+async function existWords (str, callback) {
+    var doquery = async function (key) {
+        return new Promise(resolve => {
+            existWord(key).then(item => {
+                resolve(item);
+            });
+        });
+    }
+    
+    var keys = str.replace(/^\s*/, '');
+    keys = keys.split(/[,， 　]/);
+    await Promise.all(
+        keys.map((item) => {
+            return doquery(item);
+        })
+    ).then((res) => {
+        var message = "";
+        var existCount = 0;
+        var existArray = [];
+        var disabledCount = 0;
+        var disabledArray = [];
+        var noexistCount = 0;
+        var noexistArray = [];
+        for (var item of res) {
+            if (item.exist && item.enabled) {
+                ++ existCount;
+                existArray.push(item.str);
+            } else if (item.exist) {
+                ++ disabledCount;
+                disabledArray.push(item.str);
+            } else {
+                ++ noexistCount;
+                noexistArray.push(item.str);
+            }
+        }
+        if (existCount !== 0) {
+            message += "⭕ ";
+            for (var i of existArray) {
+                message += "\"" + i + "\" ";
+            }
+            message += " は登録されています\n";
+        }
+        if (noexistCount !== 0) {
+            message += "❌ ";
+            for (var i of noexistArray) {
+                message += "\"" + i + "\" ";
+            }
+            message += " は登録されていません\n";
+        }
+        if (disabledCount !== 0) {
+            message += "❓ ";
+            for (var i of disabledArray) {
+                message += "\"" + i + "\" ";
+            }
+            message += " は以前登録されていました\n";
         }
         callback(message);
     });
@@ -301,6 +383,15 @@ client.on('message', message => {
             removeWords(words, (msg) => {
                 message.channel.send(msg);
                 // defaultLogger(msg);
+            });
+        }
+    } else if (message.content.indexOf('/exist') === 0) {
+        let words = message.content.replace(/\/exist/, '');
+        if (!(words)) {
+            message.channel.send("有効な文字列を入力してください\n  \exist word");
+        } else {
+            existWords(words, (msg) => {
+                message.channel.send(msg);
             });
         }
     }
