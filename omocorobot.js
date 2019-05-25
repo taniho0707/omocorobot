@@ -508,7 +508,7 @@ client.on('ready', () => {
 client.on('message', message => {
     if (message.content === "/help") {
         message.channel.send(helpmessage);
-    } else if (message.content === "/shuffle") {
+    } else if (message.content === "/shuffle" || message.content === "\s") {
         getRandomWord((msg) => {
             message.channel.send(msg);
         });
