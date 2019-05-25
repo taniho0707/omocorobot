@@ -135,17 +135,27 @@ function getStatus (callback) {
         if (err) {
             errorLogger.error(err);
         } else {
-            let status = "【omocorobot status】";
-            status += "\n単語総数：";
-            status += row['COUNT(name)'];
-            status += "語";
+            dbTitle.get("SELECT COUNT(messageid) FROM title", [], (err, titlerow) => {
+                if (err) {
+                    errorLogger.error(err);
+                } else {
+                    let status = "【omocorobot status】";
+                    status += "\n単語総数：";
+                    status += row['COUNT(name)'];
+                    status += "語";
 
-            var backupstatus = fs.readFileSync(secret.backuplog);
-            status += "\n最終バックアップ日時：";
-            status += backupstatus;
+                    status += "\nタイトル総数：";
+                    status += titlerow['COUNT(messageid)'];
+                    status += "タイトル";
 
-            defaultLogger.info(status);
-            callback(status);
+                    var backupstatus = fs.readFileSync(secret.backuplog);
+                    status += "\n最終バックアップ日時：";
+                    status += backupstatus;
+
+                    defaultLogger.info(status);
+                    callback(status);
+                }
+            });
         }
     });
 }
