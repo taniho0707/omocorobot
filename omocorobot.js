@@ -144,7 +144,7 @@ var existWord = function (str) {
                 ret = {
                     "exist": exist,
                     "str": str,
-                    "enabled": existItem.enabled
+                    "enabled": enabled
                 };
             }
             resolve(ret);
@@ -156,11 +156,7 @@ var existWord = function (str) {
 // 単語を1個追加/有効化する
 var addWord = function (item) {
     return new Promise(resolve => {
-        var exist = item.exist;
-        if (item.enabled === false) {
-            exist = false;
-        }
-        if (exist === false) {
+        if (item.exist === false || item.enabled === false) {
             dbWord.run("INSERT OR REPLACE INTO word VALUES (?,?,?)", [normalizeWord(item.str), item.str, true], () => {
                 resolve(item);
             });
@@ -223,11 +219,7 @@ async function addWords (str, callback) {
 // 単語を1個削除/無効化する
 var removeWord = function (item) {
     return new Promise(resolve => {
-        var exist = item.exist;
-        if (item.enabled === false) {
-            exist = false;
-        }
-        if (exist === true) {
+        if (item.exist === true || item.enabled === true) {
             dbWord.run("UPDATE word SET enabled = 0 WHERE name = ?", [normalizeWord(item.str)], () => {
                 resolve(item);
             });
