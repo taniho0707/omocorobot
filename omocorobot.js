@@ -65,21 +65,7 @@ function fetchAndAppend(channel, id, lastid, callback) {
     channel.fetchMessages({limit:50, after:id})
         .then((messages) => {
             var nextid = messages.array()[0].id;
-            var tmplogs = [];
-            messages.array().forEach((item) => {
-                var tmplog = {
-                    "id": item.id,
-                    "author": item.author,
-                    "content": item.content,
-                    "createdTimestamp": item.createdTimestamp,
-                    "editedTimestamp": item.editedTimestamp
-                };
-                if (item.author.bot) {
-                    tmplog.author = "bot";
-                }
-                tmplogs.push(tmplog);
-            });
-            fetchingMessages = tmplogs.concat(fetchingMessages);
+            fetchingMessages = messages.array().concat(fetchingMessages);
             defaultLogger.info("Received " + messages.size + " messages");
             if (messages.size === 50 && nextid !== lastid) {
                 fetchAndAppend(channel, nextid, lastid, callback);
@@ -425,20 +411,26 @@ function judgeTitleInOneTheme (str, words) {
 
 function judgeTitle (msg) {
     var returnObject;
-    returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords1);
-    if (returnObject.result) {
-        addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
-        return true;
+    if (messageLogStatus.themeWords1[0] !== "") {
+        returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords1);
+        if (returnObject.result) {
+            addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
+            return true;
+        }
     }
-    returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords2);
-    if (returnObject.result) {
-        addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
-        return true;
+    if (messageLogStatus.themeWords2[0] !== "") {
+        returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords2);
+        if (returnObject.result) {
+            addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
+            return true;
+        }
     }
-    returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords3);
-    if (returnObject.result) {
-        addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
-        return true;
+    if (messageLogStatus.themeWords3[0] !== "") {
+        returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords3);
+        if (returnObject.result) {
+            addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
+            return true;
+        }
     }
     return false;
 }
@@ -486,6 +478,19 @@ function addTitle (str, words, id, author) {
 client.on('ready', () => {
     defaultLogger.info('omocorobot started');
     fetch(() => {
+        dbTitle.serialize(() => {
+            for (var i=fetchingMessages.length-2; i>=0; --i) {
+                if (isShuffleResult(fetchingMessages[i].content)) {
+                    saveStatus();
+                } else {
+                    if (judgeTitle(fetchingMessages[i])) {
+                        console.log("Add title " + fetchingMessages[i].content);
+                        // fetchingMessages.react('❤');
+                    }
+                }
+            }
+        });
+        saveStatus();
     });
 });
 
