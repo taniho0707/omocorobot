@@ -129,6 +129,49 @@ function getRandomWord (callback) {
     });
 }
 
+// titleコマンドに対応し，ランダムなタイトルを返す
+function getRandomTitle (filter, callback) {
+    if (filter == null) {
+        dbTitle.get("SELECT * FROM title ORDER BY RANDOM() LIMIT 1", [], (err, row) => {
+            if (err) {
+                errorLogger.error(err);
+            } else {
+                let status;
+                if (row == undefined) {
+                    status = "\"";
+                    status += filter;
+                    status += "\" を含むタイトルは見つかりませんでした";
+                } else {
+                    status = "【過去タイトル】\n";
+                    status += row["title"];
+                    status += "\n作者：";
+                    status += row["author"];
+                }
+                callback(status);
+            }
+        });
+    } else {
+        dbTitle.get("SELECT * FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter)], (err, row) => {
+            if (err) {
+                errorLogger.error(err);
+            } else {
+                let status;
+                if (row == undefined) {
+                    status = "\"";
+                    status += filter;
+                    status += "\" を含むタイトルは見つかりませんでした";
+                } else {
+                    status = "【過去タイトル】\n";
+                    status += row["title"];
+                    status += "\n作者：";
+                    status += row["author"];
+                }
+                callback(status);
+            }
+        });
+    }
+}
+
 // 有効化された単語数を返す
 function getStatus (callback) {
     dbWord.get("SELECT COUNT(name) FROM word WHERE enabled = 1", [], (err, row) => {
@@ -421,6 +464,10 @@ function judgeTitleInOneTheme (str, words) {
 }
 
 function judgeTitle (msg) {
+    if (msg.content.indexOf('【過去タイトル】') === 0) {
+        return false;
+    }
+    
     var returnObject;
     if (messageLogStatus.themeWords1[0] !== "") {
         returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords1);
@@ -516,6 +563,16 @@ client.on('message', message => {
         getStatus((msg) => {
             message.channel.send(msg);
         });
+    } else if (message.content.indexOf('/title') === 0) {
+        if (message.content === "/title") {
+            getRandomTitle(null, (msg) => {
+                message.channel.send(msg);
+            });
+        } else {
+            getRandomTitle(message.content.replace(/\/title /, ''), (msg) => {
+                message.channel.send(msg);
+            });
+        }
     } else if (message.content === "/award") {
         // let awardtitles = "【優秀タイトル】";
         // awardtitles += getAwardTitles();
