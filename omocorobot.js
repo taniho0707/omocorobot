@@ -445,7 +445,8 @@ function judgeTitleInOneTheme (str, words) {
     var counter = 0;
     var returnObject = {
         "result": false,
-        "words": []
+        "words": [],
+        "count": 0
     };
     var normalizedStr = normalizeWord(str);
     for (var i=0; i<4; ++i) {
@@ -456,8 +457,10 @@ function judgeTitleInOneTheme (str, words) {
     }
     if (counter >= 3) {
         returnObject.result = true;
+        returnObject.count = 4;
         if (counter === 3) {
             returnObject.words.push("");
+            returnObject.count = 3;
         }
     }
     return returnObject;
@@ -465,7 +468,7 @@ function judgeTitleInOneTheme (str, words) {
 
 function judgeTitle (msg) {
     if (msg.content.indexOf('【過去タイトル】') === 0) {
-        return false;
+        return 0;
     }
     
     var returnObject;
@@ -473,24 +476,24 @@ function judgeTitle (msg) {
         returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords1);
         if (returnObject.result) {
             addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
-            return true;
+            return returnObject.count;
         }
     }
     if (messageLogStatus.themeWords2[0] !== "") {
         returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords2);
         if (returnObject.result) {
             addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
-            return true;
+            return returnObject.count;
         }
     }
     if (messageLogStatus.themeWords3[0] !== "") {
         returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords3);
         if (returnObject.result) {
             addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
-            return true;
+            return returnObject.count;
         }
     }
-    return false;
+    return 0;
 }
 
 
@@ -610,8 +613,12 @@ client.on('message', message => {
         if (isShuffleResult(message.content)) {
             
         } else {
-            if (judgeTitle(message)) {
+            let judgedcount = judgeTitle(message);
+            if (judgedcount >= 3) {
                 message.react('❤');
+            }
+            if (judgedcount === 4) {
+                message.react('💮');
             }
         }
     }
