@@ -46,6 +46,64 @@ if (fs.existsSync(config.secretPath)) {
 }
 
 
+// Status
+var messageLogStatus;
+var fetchingMessages;
+
+// ステータスをファイルに保存する
+function saveStatus() {
+    fs.writeFileSync('./status.json', JSON.stringify(messageLogStatus, null, '    '));
+}
+
+// ステータスをファイルから読み出す
+function loadStatus() {
+    messageLogStatus = JSON.parse(fs.readFileSync('./status.json', 'utf8'));
+}
+
+// メッセージをさかのぼり読込する
+function fetchAndAppend(channel, id, lastid, callback) {
+    channel.fetchMessages({limit:50, after:id})
+        .then((messages) => {
+            var nextid = messages.array()[0].id;
+            var tmplogs = [];
+            messages.array().forEach((item) => {
+                var tmplog = {
+                    "id": item.id,
+                    "author": item.author,
+                    "content": item.content,
+                    "createdTimestamp": item.createdTimestamp,
+                    "editedTimestamp": item.editedTimestamp
+                };
+                if (item.author.bot) {
+                    tmplog.author = "bot";
+                }
+                tmplogs.push(tmplog);
+            });
+            fetchingMessages = tmplogs.concat(fetchingMessages);
+            defaultLogger.info("Received " + messages.size + " messages");
+            if (messages.size === 50 && nextid !== lastid) {
+                fetchAndAppend(channel, nextid, lastid, callback);
+            } else {
+                defaultLogger.info("Fetch done!");
+                callback();
+            }
+        })
+        .catch(errorLogger.error);
+}
+
+function fetch(callback) {
+    const titlechannel = client.channels.find('id', secret.channelid);
+    const lastmessageid = messageLogStatus.lastMessageId;
+    defaultLogger.info("Load start from lastmessage id: " + lastmessageid);
+    if (lastmessageid === titlechannel.lastMessageID) {
+        defaultLogger.info("This is the latest message");
+    } else {
+        messageLogStatus.lastMessageId = titlechannel.lastMessageID;
+        fetchAndAppend(titlechannel, lastmessageid, titlechannel.lastMessageID, callback);
+    }
+}
+
+
 
 function openOrCreateDatabase () {
     dbWord = new sqlite3.Database('word.sqlite');
@@ -341,8 +399,94 @@ async function existWords (str, callback) {
 }
 
 
+
+
+// タイトルらしき投稿を判別します
+function judgeTitleInOneTheme (str, words) {
+    var counter = 0;
+    var returnObject = {
+        "result": false,
+        "words": []
+    };
+    for (var i=0; i<4; ++i) {
+        if (str.indexOf(words[i]) !== -1) {
+            ++ counter;
+            returnObject.words.push(words[i]);
+        }
+    }
+    if (counter >= 3) {
+        returnObject.result = true;
+        if (counter === 3) {
+            returnObject.words.push("");
+        }
+    }
+    return returnObject;
+}
+
+function judgeTitle (msg) {
+    var returnObject;
+    returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords1);
+    if (returnObject.result) {
+        addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
+        return true;
+    }
+    returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords2);
+    if (returnObject.result) {
+        addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
+        return true;
+    }
+    returnObject = judgeTitleInOneTheme(msg.content, messageLogStatus.themeWords3);
+    if (returnObject.result) {
+        addTitle(msg.content, returnObject.words, msg.id, msg.author.username);
+        return true;
+    }
+    return false;
+}
+
+
+// ライトノベルBOXを回した投稿かどうか判別し，必要であれば更新します
+function isShuffleResult (str) {
+    if (str.indexOf('【ライトノベルBOX】') === 0) {
+        var words = str.split("\n");
+        for (var i = 0; i < 4; ++i) {
+            messageLogStatus.themeWords3[i] = messageLogStatus.themeWords2[i];
+        }
+        for (var i = 0; i < 4; ++i) {
+            messageLogStatus.themeWords2[i] = messageLogStatus.themeWords1[i];
+        }
+        messageLogStatus.themeWords1[0] = words[1];
+        messageLogStatus.themeWords1[1] = words[2];
+        messageLogStatus.themeWords1[2] = words[3];
+        messageLogStatus.themeWords1[3] = words[4];
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+// タイトルを登録します
+function addTitle (str, words, id, author) {
+    var word3 = null;
+    if (words[3] !== "") {
+        word3 = words[3];
+    }
+    dbTitle.run("INSERT INTO title VALUES (?,?,?,?,?,?,?,?)", [
+        id, str, author, words[0], words[1], words[2], word3, 0
+    ], (err) => {
+        if (err) {
+            errorLogger.error(err);
+        }
+        defaultLogger.info("Add title \"" + str + "\" (" + author + ")");
+    });
+}
+
+
+
 client.on('ready', () => {
     defaultLogger.info('omocorobot started');
+    fetch(() => {
+    });
 });
 
 client.on('message', message => {
@@ -389,7 +533,17 @@ client.on('message', message => {
                 message.channel.send(msg);
             });
         }
+    } else {
+        if (isShuffleResult(message.content)) {
+            
+        } else {
+            if (judgeTitle(message)) {
+                message.react('❤');
+            }
+        }
     }
+    messageLogStatus.lastMessageId = message.id;
+    saveStatus();
 });
 
 
@@ -404,7 +558,7 @@ process.on('SIGINT', function() {
 });
 
 
-
+loadStatus();
 openOrCreateDatabase();
 
 client.login(token);

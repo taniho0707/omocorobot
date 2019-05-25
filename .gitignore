@@ -8,6 +8,7 @@ word.sqlite
 title.sqlite
 backup.log
 lists.txt
+status.json
 
 # Logs
 logs
