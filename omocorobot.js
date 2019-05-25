@@ -114,7 +114,7 @@ function closeDatabase () {
 
 // shuffleコマンドに対応する結果を返す
 function getRandomWord (callback) {
-    dbWord.all("SELECT * FROM word ORDER BY RANDOM() WHERE enabled = 1 LIMIT 4", [], (err, rows) => {
+    dbWord.all("SELECT * FROM word WHERE enabled = 1 ORDER BY RANDOM() LIMIT 4", [], (err, rows) => {
         if (err) {
             errorLogger.error(err);
         } else {
@@ -558,7 +558,7 @@ client.on('ready', () => {
 client.on('message', message => {
     if (message.content === "/help") {
         message.channel.send(helpmessage);
-    } else if (message.content === "/shuffle" || message.content === "\s") {
+    } else if (message.content === "/shuffle" || message.content === "/s") {
         getRandomWord((msg) => {
             message.channel.send(msg);
         });
