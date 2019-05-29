@@ -159,12 +159,12 @@ function getRandomTitle (filter, callback) {
             }
         });
     } else {
-        dbTitle.get("SELECT * FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row) => {
+        dbTitle.get("SELECT *, COUNT(*) FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row) => {
             if (err) {
                 errorLogger.error(err);
             } else {
                 let status;
-                if (row == undefined) {
+                if (row["COUNT(*)"] === 0) {
                     status = "\"";
                     status += filter;
                     status += "\" を含むタイトルは見つかりませんでした";
@@ -177,7 +177,10 @@ function getRandomTitle (filter, callback) {
                         titlestr = titlestr.replace(row.word4, "**"+row.word4+"**");
                     }
                     titlestr = titlestr.split("****").join("");
-                    status = "【過去タイトル】\n";
+                    status = "【過去タイトル】";
+                    status += "ヒット件数：";
+                    status += row["COUNT(*)"];
+                    status += "件\n";
                     status += titlestr;
                     status += "\n作者：";
                     status += row["author"];
