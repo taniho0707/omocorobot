@@ -142,8 +142,16 @@ function getRandomTitle (filter, callback) {
                     status += filter;
                     status += "\" を含むタイトルは見つかりませんでした";
                 } else {
+                    let titlestr = row["title"];
+                    titlestr = titlestr.replace(row.word1, "**"+row.word1+"**");
+                    titlestr = titlestr.replace(row.word2, "**"+row.word2+"**");
+                    titlestr = titlestr.replace(row.word3, "**"+row.word3+"**");
+                    if (row.word4 !== null) {
+                        titlestr = titlestr.replace(row.word4, "**"+row.word4+"**");
+                    }
+                    titlestr = titlestr.split("****").join("");
                     status = "【過去タイトル】\n";
-                    status += row["title"];
+                    status += titlestr;
                     status += "\n作者：";
                     status += row["author"];
                 }
@@ -161,8 +169,16 @@ function getRandomTitle (filter, callback) {
                     status += filter;
                     status += "\" を含むタイトルは見つかりませんでした";
                 } else {
+                    let titlestr = row["title"];
+                    titlestr = titlestr.replace(row.word1, "**"+row.word1+"**");
+                    titlestr = titlestr.replace(row.word2, "**"+row.word2+"**");
+                    titlestr = titlestr.replace(row.word3, "**"+row.word3+"**");
+                    if (row.word4 !== null) {
+                        titlestr = titlestr.replace(row.word4, "**"+row.word4+"**");
+                    }
+                    titlestr = titlestr.split("****").join("");
                     status = "【過去タイトル】\n";
-                    status += row["title"];
+                    status += titlestr;
                     status += "\n作者：";
                     status += row["author"];
                 }
