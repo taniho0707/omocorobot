@@ -6,6 +6,7 @@ const log4js = require("log4js");
 const Discord = require("discord.js");
 const request = require('sync-request');
 const sqlite3 = require('sqlite3').verbose();
+const {promisify} = require('util');
 
 const client = new Discord.Client();
 
@@ -130,47 +131,41 @@ function getRandomWord (callback) {
 }
 
 // titleコマンドに対応し，ランダムなタイトルを返す
-function getRandomTitle (filter, callback) {
-    if (filter == null) {
-        dbTitle.get("SELECT * FROM title ORDER BY RANDOM() LIMIT 1", [], (err, row) => {
-            if (err) {
-                errorLogger.error(err);
-            } else {
-                let status;
-                if (row == undefined) {
-                    status = "\"";
-                    status += filter;
-                    status += "\" を含むタイトルは見つかりませんでした";
+var getRandomTitle = function (filter) {
+    return new Promise(resolve => {
+        if (filter == null) {
+            dbTitle.get("SELECT * FROM title ORDER BY RANDOM() LIMIT 1", [], (err, row) => {
+                if (err) {
+                    errorLogger.error(err);
                 } else {
-                    status = "【過去タイトル】\n";
-                    status += row["title"];
-                    status += "\n作者：";
-                    status += row["author"];
+                    resolve(row);
                 }
-                callback(status);
-            }
-        });
-    } else {
-        dbTitle.get("SELECT * FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row) => {
-            if (err) {
-                errorLogger.error(err);
-            } else {
-                let status;
-                if (row == undefined) {
-                    status = "\"";
-                    status += filter;
-                    status += "\" を含むタイトルは見つかりませんでした";
+            });
+        } else {
+            dbTitle.get("SELECT * FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row) => {
+                if (err) {
+                    errorLogger.error(err);
                 } else {
-                    status = "【過去タイトル】\n";
-                    status += row["title"];
-                    status += "\n作者：";
-                    status += row["author"];
+                    resolve(row);
                 }
-                callback(status);
-            }
-        });
-    }
+            });
+        }
+    });
 }
+
+async function getPreviousMessage (id) {
+    await message.channel.fetchMessage(id).then(oldmsg => {
+        var status = "【過去タイトル】\n";
+        status += msg["title"];
+        status += "\n投稿：";
+        status += msg["author"];
+        status += "，";
+        var date = new Date(oldmsg.createdTimestamp);
+        status += date.toString();
+        callback(status);
+    });
+}
+
 
 // 有効化された単語数を返す
 function getStatus (callback) {
@@ -568,8 +563,28 @@ client.on('message', message => {
         });
     } else if (message.content.indexOf('/title') === 0) {
         if (message.content === "/title") {
-            getRandomTitle(null, (msg) => {
-                message.channel.send(msg);
+            // ここ以下，Promiseチェーンで繋げてみる(エラーハンドリングもする)
+            getRandomTitle(null).then((msg) => {
+                if (msg == undefined) {
+                    var status = "タイトルは見つかりませんでした";
+                    message.channel.send(status);
+                } else {
+                    // message.channel.fetchMessage(msg["messageid"]).then(oldmsg => {
+                        //     var status = "【過去タイトル】\n";
+                        //     status += msg["title"];
+                        //     status += "\n投稿：";
+                        //     status += msg["author"];
+                        //     status += "，";
+                        //     var date = new Date(oldmsg.createdTimestamp);
+                        //     status += date.toString();
+                        //     message.channel.send(status);
+                    // });
+                    return Promise.resolve()
+                        .then(promisify(message.channel.fetchMessage)(msg["messageid"]))
+                        .then((status) => {
+                            message.channel.send(status)
+                        });
+                }
             });
         } else {
             getRandomTitle(message.content.replace(/\/title /, ''), (msg) => {
