@@ -633,11 +633,13 @@ client.on('message', message => {
             
         } else {
             let judgedcount = judgeTitle(message);
-            if (judgedcount >= 3) {
+            if (judgedcount === 3) {
                 message.react('❤');
             }
             if (judgedcount === 4) {
-                message.react('💮');
+                message.react('❤').then(() => {
+                    message.react('💮');
+                });
             }
         }
     }
