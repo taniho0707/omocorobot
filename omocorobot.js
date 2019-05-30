@@ -159,33 +159,39 @@ function getRandomTitle (filter, callback) {
             }
         });
     } else {
-        dbTitle.get("SELECT *, COUNT(*) FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row) => {
+        dbTitle.get("SELECT COUNT(*) FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ?", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row1) => {
             if (err) {
                 errorLogger.error(err);
             } else {
-                let status;
-                if (row["COUNT(*)"] === 0) {
-                    status = "\"";
-                    status += filter;
-                    status += "\" を含むタイトルは見つかりませんでした";
-                } else {
-                    let titlestr = row["title"];
-                    titlestr = titlestr.replace(row.word1, "**"+row.word1+"**");
-                    titlestr = titlestr.replace(row.word2, "**"+row.word2+"**");
-                    titlestr = titlestr.replace(row.word3, "**"+row.word3+"**");
-                    if (row.word4 !== null) {
-                        titlestr = titlestr.replace(row.word4, "**"+row.word4+"**");
+                dbTitle.get("SELECT * FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row) => {
+                    if (err) {
+                        errorLogger.error(err);
+                    } else {
+                        let status;
+                        if (row1["COUNT(*)"] === 0) {
+                            status = "\"";
+                            status += filter;
+                            status += "\" を含むタイトルは見つかりませんでした";
+                        } else {
+                            let titlestr = row["title"];
+                            titlestr = titlestr.replace(row.word1, "**"+row.word1+"**");
+                            titlestr = titlestr.replace(row.word2, "**"+row.word2+"**");
+                            titlestr = titlestr.replace(row.word3, "**"+row.word3+"**");
+                            if (row.word4 !== null) {
+                                titlestr = titlestr.replace(row.word4, "**"+row.word4+"**");
+                            }
+                            titlestr = titlestr.split("****").join("");
+                            status = "【過去タイトル】";
+                            status += "ヒット件数：";
+                            status += row1["COUNT(*)"];
+                            status += "件\n";
+                            status += titlestr;
+                            status += "\n作者：";
+                            status += row["author"];
+                        }
+                        callback(status);
                     }
-                    titlestr = titlestr.split("****").join("");
-                    status = "【過去タイトル】";
-                    status += "ヒット件数：";
-                    status += row["COUNT(*)"];
-                    status += "件\n";
-                    status += titlestr;
-                    status += "\n作者：";
-                    status += row["author"];
-                }
-                callback(status);
+                });
             }
         });
     }
