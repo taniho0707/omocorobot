@@ -181,7 +181,7 @@ var getRandomTitle = function(filter) {
                                 status += "\" を含むタイトルは見つかりませんでした";
                                 resolve(status);
                             } else {
-                                client.channels.get(secret.channelid).fetchMessages({ limit: 1, around: row1["messageid"]}).then(msg => {
+                                client.channels.get(secret.channelid).fetchMessages({ limit: 1, around: row["messageid"]}).then(msg => {
                                     let titlestr = row["title"];
                                     titlestr = titlestr.replace(row.word1, "**"+row.word1+"**");
                                     titlestr = titlestr.replace(row.word2, "**"+row.word2+"**");
