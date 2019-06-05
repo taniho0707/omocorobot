@@ -130,49 +130,21 @@ function getRandomWord (callback) {
 }
 
 // titleコマンドに対応し，ランダムなタイトルを返す
-function getRandomTitle (filter, callback) {
-    if (filter == null) {
-        dbTitle.get("SELECT * FROM title ORDER BY RANDOM() LIMIT 1", [], (err, row) => {
-            if (err) {
-                errorLogger.error(err);
-            } else {
-                let status;
-                if (row == undefined) {
-                    status = "\"";
-                    status += filter;
-                    status += "\" を含むタイトルは見つかりませんでした";
+var getRandomTitle = function(filter) {
+    return new Promise(resolve => {
+        if (filter == null) {
+            dbTitle.get("SELECT * FROM title ORDER BY RANDOM() LIMIT 1", [], (err, row) => {
+                if (err) {
+                    errorLogger.error(err);
                 } else {
-                    let titlestr = row["title"];
-                    titlestr = titlestr.replace(row.word1, "**"+row.word1+"**");
-                    titlestr = titlestr.replace(row.word2, "**"+row.word2+"**");
-                    titlestr = titlestr.replace(row.word3, "**"+row.word3+"**");
-                    if (row.word4 !== null) {
-                        titlestr = titlestr.replace(row.word4, "**"+row.word4+"**");
-                    }
-                    titlestr = titlestr.split("****").join("");
-                    status = "【過去タイトル】\n";
-                    status += titlestr;
-                    status += "\n作者：";
-                    status += row["author"];
-                }
-                callback(status);
-            }
-        });
-    } else {
-        dbTitle.get("SELECT COUNT(*) FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ?", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row1) => {
-            if (err) {
-                errorLogger.error(err);
-            } else {
-                dbTitle.get("SELECT * FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row) => {
-                    if (err) {
-                        errorLogger.error(err);
+                    let status;
+                    if (row == undefined) {
+                        status = "\"";
+                        status += filter;
+                        status += "\" を含むタイトルは見つかりませんでした";
+                        resolve(status);
                     } else {
-                        let status;
-                        if (row1["COUNT(*)"] === 0) {
-                            status = "\"";
-                            status += filter;
-                            status += "\" を含むタイトルは見つかりませんでした";
-                        } else {
+                        client.channels.get(secret.channelid).fetchMessages({ limit: 1, around: row["messageid"]}).then(msg => {
                             let titlestr = row["title"];
                             titlestr = titlestr.replace(row.word1, "**"+row.word1+"**");
                             titlestr = titlestr.replace(row.word2, "**"+row.word2+"**");
@@ -181,20 +153,61 @@ function getRandomTitle (filter, callback) {
                                 titlestr = titlestr.replace(row.word4, "**"+row.word4+"**");
                             }
                             titlestr = titlestr.split("****").join("");
-                            status = "【過去タイトル】";
-                            status += "ヒット件数：";
-                            status += row1["COUNT(*)"];
-                            status += "件\n";
+                            status = "【過去タイトル】\n";
                             status += titlestr;
                             status += "\n作者：";
                             status += row["author"];
-                        }
-                        callback(status);
+                            status += ", ";
+                            var date = new Date(msg.createdTimestamp);
+                            status += date.toLocaleString();
+                            resolve(status);
+                        });
                     }
-                });
-            }
-        });
-    }
+                }
+            });
+        } else {
+            dbTitle.get("SELECT COUNT(*) FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ?", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row1) => {
+                if (err) {
+                    errorLogger.error(err);
+                } else {
+                    dbTitle.get("SELECT * FROM title WHERE word1 = ? OR word2 = ? OR word3 = ? OR word4 = ? OR author = ? ORDER BY RANDOM() LIMIT 1", [normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), normalizeWord(filter), filter], (err, row) => {
+                        if (err) {
+                            errorLogger.error(err);
+                        } else {
+                            let status;
+                            if (row1["COUNT(*)"] === 0) {
+                                status = "\"";
+                                status += filter;
+                                status += "\" を含むタイトルは見つかりませんでした";
+                                resolve(status);
+                            } else {
+                                client.channels.get(secret.channelid).fetchMessages({ limit: 1, around: row1["messageid"]}).then(msg => {
+                                    let titlestr = row["title"];
+                                    titlestr = titlestr.replace(row.word1, "**"+row.word1+"**");
+                                    titlestr = titlestr.replace(row.word2, "**"+row.word2+"**");
+                                    titlestr = titlestr.replace(row.word3, "**"+row.word3+"**");
+                                    if (row.word4 !== null) {
+                                        titlestr = titlestr.replace(row.word4, "**"+row.word4+"**");
+                                    }
+                                    titlestr = titlestr.split("****").join("");
+                                    status = "【過去タイトル】";
+                                    status += "ヒット件数：";
+                                    status += row1["COUNT(*)"];
+                                    status += "件\n";
+                                    status += titlestr;
+                                    status += "\n作者：";
+                                    status += row["author"];
+                                    var date = new Date(msg.createdTimestamp);
+                                    status += date.toLocaleString();
+                                    resolve(status);
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    });
 }
 
 // 有効化された単語数を返す
@@ -593,11 +606,11 @@ client.on('message', message => {
         });
     } else if (message.content.indexOf('/title') === 0) {
         if (message.content === "/title") {
-            getRandomTitle(null, (msg) => {
+            getRandomTitle(null).then((msg) => {
                 message.channel.send(msg);
             });
         } else {
-            getRandomTitle(message.content.replace(/\/title /, ''), (msg) => {
+            getRandomTitle(message.content.replace(/\/title /, '')).then((msg) => {
                 message.channel.send(msg);
             });
         }
