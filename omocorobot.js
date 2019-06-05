@@ -530,7 +530,6 @@ function addTitle (str, words, id, author) {
 }
 
 
-
 client.on('ready', () => {
     defaultLogger.info('omocorobot started');
     fetch(() => {
@@ -569,21 +568,16 @@ client.on('message', message => {
                     var status = "タイトルは見つかりませんでした";
                     message.channel.send(status);
                 } else {
-                    // message.channel.fetchMessage(msg["messageid"]).then(oldmsg => {
-                        //     var status = "【過去タイトル】\n";
-                        //     status += msg["title"];
-                        //     status += "\n投稿：";
-                        //     status += msg["author"];
-                        //     status += "，";
-                        //     var date = new Date(oldmsg.createdTimestamp);
-                        //     status += date.toString();
-                        //     message.channel.send(status);
-                    // });
-                    return Promise.resolve()
-                        .then(promisify(message.channel.fetchMessage)(msg["messageid"]))
-                        .then((status) => {
-                            message.channel.send(status)
-                        });
+                    message.channel.fetchMessages({ limit: 1, around: msg["messageid"]}).then(oldmsg => {
+                        var status = "【過去タイトル】\n";
+                        status += msg["title"];
+                        status += "\n投稿：";
+                        status += msg["author"];
+                        status += "，";
+                        var date = new Date(oldmsg.createdTimestamp);
+                        status += date.toLocaleString();
+                        message.channel.send(status);
+                    });
                 }
             });
         } else {
