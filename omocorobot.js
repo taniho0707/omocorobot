@@ -197,6 +197,7 @@ var getRandomTitle = function(filter) {
                                     status += titlestr;
                                     status += "\n作者：";
                                     status += row["author"];
+                                    status += ", ";
                                     var date = new Date(msg.first().createdTimestamp);
                                     status += date.toLocaleString();
                                     resolve(status);
