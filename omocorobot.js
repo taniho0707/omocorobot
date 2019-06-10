@@ -243,6 +243,44 @@ function getStatus (callback) {
 }
 
 
+function updateAllReactions () {
+    var updateSingleMessage = function (messageid) {
+        return new Promise(resolve => {
+            client.channels.get(secret.channelid).fetchMessages({ limit: 3, around: messageid }).then(msg => {
+                var num = 0;
+                var reactionsarray = msg.first().reactions.array();
+                if (reactionsarray.length !== 0) {
+                    num = reactionsarray.reduce((prev, cur) => {
+                        if (cur.me) {
+                            return prev + (cur.count - 1);
+                        } else {
+                            return prev + cur.count;
+                        }
+                    }, 0);
+                }
+                
+                console.log(msg.first().id + ", " + num);
+                dbTitle.run("UPDATE title SET reaction = ? WHERE messageid = ?", [num, msg.first().id], () => {
+                    resolve();
+                });
+            });
+        });
+    }
+
+    return new Promise(resolve => {
+        dbTitle.all("SELECT messageid FROM title", [], (err, all) => {
+            Promise.all(
+                all.map((item) => {
+                    return updateSingleMessage(item["messageid"]);
+                })
+            ).then((res) => {
+                resolve();
+            });
+        });
+    });
+}
+
+
 // 人気タイトルを返す
 function getAwardTitles () {
 
@@ -564,7 +602,7 @@ function addTitle (str, words, id, author) {
         word3 = words[3];
     }
     dbTitle.run("INSERT INTO title VALUES (?,?,?,?,?,?,?,?)", [
-        id, str, author, words[0], words[1], words[2], word3, 0
+        id, str, author, words[0], words[1], words[2], word3, -1
     ], (err) => {
         if (err) {
             errorLogger.error(err);
@@ -619,6 +657,15 @@ client.on('message', message => {
         // let awardtitles = "【優秀タイトル】";
         // awardtitles += getAwardTitles();
         // message.channel.send(awardtitles);
+    } else if (message.content === "/updatereaction") {
+        
+    } else if (message.content === "/updateallreaction") {
+        dbTitle.get("SELECT COUNT(messageid) FROM title", [], (err, row) => {
+            message.channel.send("" + row['COUNT(messageid)'] + "件の取得を開始します．\n完了するまでbotの使用はしないでください．");
+            updateAllReactions().then(() => {
+                message.channel.send("リアクション数の更新が完了しました");
+            });
+        });
     } else if (message.content.indexOf('/add') === 0) {
         let words = message.content.replace(/\/add/, '');
         if (!(words)) {
